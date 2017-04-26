@@ -98,6 +98,13 @@ class OAuthApiController extends ApiController {
 			return new JSONResponse(['error' => 'invalid_request'], Http::STATUS_BAD_REQUEST);
 		}
 
+		if (!isset($_SERVER['PHP_AUTH_USER']) && isset($_REQUEST['client_id'])) {
+			$_SERVER['PHP_AUTH_USER'] = $_REQUEST['client_id'];
+		}
+		if (!isset($_SERVER['PHP_AUTH_PW']) && isset($_REQUEST['client_secret'])) {
+			$_SERVER['PHP_AUTH_PW'] = $_REQUEST['client_secret'];
+		}
+
 		if (is_null($_SERVER['PHP_AUTH_USER']) || is_null($_SERVER['PHP_AUTH_PW'])) {
 			return new JSONResponse(['error' => 'invalid_request'], Http::STATUS_BAD_REQUEST);
 		}
@@ -164,6 +171,15 @@ class OAuthApiController extends ApiController {
 				break;
 			default:
 				return new JSONResponse(['error' => 'invalid_grant'], Http::STATUS_BAD_REQUEST);
+		}
+
+		if (isset($_REQUEST['resource'])) {
+			\OC_User::setUserId($userId);
+			$storage = \OCP\Files::getStorage('files');
+			$info = $storage->getFileInfo($_REQUEST['resource']);
+			if (! $info || ! $info->isReadable()) {
+				return new JSONResponse(['error' => 'permission_denied' ], Http::STATUS_BAD_REQUEST);
+			}
 		}
 
 		$this->authorizationCodeMapper->deleteByClientUser($client->getId(), $userId);
